@@ -6,6 +6,9 @@ A zip file is just an array of entries and a central directory at the end of a f
 
 We cannot write to a zip file in parallel, but we can compress data in parallel in memory.
 
+Last but not least, nobody wants to reimplement zip logic from scratch
+or use an unsupported third-party zip library.
+We reuse the standard `java.util.zip.ZipOutputStream` in the presented approach.
 
 # Algorithm
 
@@ -76,19 +79,19 @@ Zipping `12.06 GB of 175,866 items` to a `1.14 GB` zip file on a MacBook M2 Max 
 
 
 
-A fully functional parallel zip in pure Java ([full source](src/main/java/parallelZip/MainJava.java)):
+A fully functional parallel zip in pure Java [(source)](src/main/java/parallelZip/MainJava.java):
 
 ```shell
 gradle runJava <out.zip> <file-or-dir> .. 
 ```
 
-A fully functional parallel zip in Kotlin ([full source](src/main/kotlin/parallelZip/MainKotlin.kt)):
+A fully functional parallel zip in Kotlin [(source)](src/main/kotlin/parallelZip/MainKotlin.kt):
 
 ```shell
 gradle runKotlin <out.zip> <file-or-dir> ..
 ```
 
-Sequential zipping for comparison in pure Java ([full source](src/main/java/parallelZip/Sequential.java)):
+Sequential zipping for comparison in pure Java [(source)](src/main/java/parallelZip/Sequential.java):
 
 ```shell
 gradle runSequential <out.zip> <file-or-dir> ..
