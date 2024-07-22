@@ -29,6 +29,10 @@ task<JavaExec>("runKotlin") {
     configure("MainKotlin")
 }
 
+task<JavaExec>("runSequential") {
+    configure("Sequential")
+}
+
 fun JavaExec.configure(name: String) {
     mainClass = "parallelZip.$name"
     classpath = sourceSets["main"].runtimeClasspath

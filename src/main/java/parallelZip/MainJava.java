@@ -1,5 +1,6 @@
 package parallelZip;
 
+import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.lang.invoke.MethodHandles;
@@ -72,7 +73,7 @@ public class MainJava {
   /** @noinspection unchecked*/
   private static void writeZipEntriesToZip(Path zipFile, List<Map.Entry<ZipEntry, byte[]>> list) throws Exception {
     // a zip is just its entries and a central directory at the end
-    try (var os = Files.newOutputStream(zipFile)) {
+    try (var os = new BufferedOutputStream(Files.newOutputStream(zipFile))) {
       var zip = new ZipOutputStream(os);
       var xEntries = (Vector<Object>)varEntries.get(zip);
       var offset = 0L;

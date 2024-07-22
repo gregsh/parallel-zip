@@ -4,6 +4,7 @@ package parallelZip
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.lang.invoke.MethodHandles
 import java.nio.file.Files
@@ -64,7 +65,7 @@ private fun addZipEntryToMap(rootParent: Path?, path: Path, zipEntries: Concurre
 @Suppress("UNCHECKED_CAST")
 private fun writeZipEntriesToZip(zipFile: Path, list: List<Pair<ZipEntry, ByteArray>>) {
     // a zip is just its entries and a central directory at the end
-    zipFile.outputStream().use { os ->
+    zipFile.outputStream().buffered().use { os ->
         val zip = ZipOutputStream(os)
         val xEntries = varEntries.get(zip) as Vector<Any>
         var offset = 0L

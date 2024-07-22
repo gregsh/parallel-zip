@@ -71,8 +71,8 @@ Zipping `12.06 GB of 175,866 items` to a `1.14 GB` zip file on a MacBook M2 Max 
 
 | Mode       | Seconds |
 |------------|---------|
-| Sequential |     174 |
-| Parallel   |      31 |
+| Sequential | 151     |
+| Parallel   | 18      |
 
 
 
@@ -86,4 +86,10 @@ A fully functional parallel zip in Kotlin ([full source](src/main/kotlin/paralle
 
 ```shell
 gradle runKotlin <out.zip> <file-or-dir> ..
+```
+
+Sequential zipping for comparison in pure Java ([full source](src/main/java/parallelZip/Sequential.java)):
+
+```shell
+gradle runSequential <out.zip> <file-or-dir> ..
 ```
