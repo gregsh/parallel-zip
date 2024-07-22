@@ -51,10 +51,19 @@ We cannot write to a zip file in parallel, but we can compress data in parallel 
     }
 ```
 
-**Note 1**: Java Reflection is used to work around missing Java API.
-**To avoid that in the future, we must request such an API.**
+# Notes
 
-**Note 2**: We can merge zips without repacking using the same technique.
+1. Java Reflection is used to work around missing Java API.
+   **To avoid that in the future, we must request such an API**
+
+2. The algorithm takes roughly the same amount of memory as the target zip file.
+   We can start writing to disk when new zip entries are ready, applying backpressure to control memory consumption
+
+3. It's the compression that takes most of the time.
+   We can generate already compressed data in parallel in various data generation tasks. 
+   Then, saving it to disk will take very little time
+
+4. We can merge zip files without repacking using the same technique
 
 # Results
 
