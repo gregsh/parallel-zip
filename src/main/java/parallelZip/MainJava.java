@@ -1,5 +1,6 @@
 package parallelZip;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -59,7 +60,7 @@ public class MainJava {
     var zipEntry = new ZipEntry(relativePath.toString());
     // skip the central directory writing by _not_ closing the zip stream
     var zip = new ZipOutputStream(out);
-    try (var fileStream = Files.newInputStream(path)) {
+    try (var fileStream = new BufferedInputStream(Files.newInputStream(path))) {
       zip.putNextEntry(zipEntry);
       fileStream.transferTo(zip);
       zip.closeEntry();

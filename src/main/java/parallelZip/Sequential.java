@@ -1,5 +1,6 @@
 package parallelZip;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -31,7 +32,7 @@ public class Sequential {
         try (var pathStream = Files.walk(root)) {
           pathStream.filter(o -> !Files.isDirectory(o)).forEach(path -> {
             var relativePath = rootParent == null ? path : rootParent.relativize(path);
-            try (var fileStream = Files.newInputStream(path)) {
+            try (var fileStream = new BufferedInputStream(Files.newInputStream(path))) {
               zip.putNextEntry(new ZipEntry(relativePath.toString()));
               fileStream.transferTo(zip);
               zip.closeEntry();

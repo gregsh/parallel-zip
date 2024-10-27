@@ -4,7 +4,6 @@ package parallelZip
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
-import java.io.BufferedOutputStream
 import java.io.ByteArrayOutputStream
 import java.lang.invoke.MethodHandles
 import java.nio.file.Files
@@ -31,9 +30,8 @@ fun main(args: Array<String>) {
     zipFile.parent.toFile().mkdirs()
 
     val zipEntries = ConcurrentHashMap<ZipEntry, ByteArray>()
-    val dispatcher = Dispatchers.Default //.limitedParallelism(1)
     val startTime = System.nanoTime()
-    runBlocking(dispatcher) {
+    runBlocking(Dispatchers.Default) {
         toZip.forEach { root ->
             Files.walk(root).filter { !it.isDirectory() }.forEach { path ->
                 launch {
@@ -56,7 +54,7 @@ private fun addZipEntryToMap(rootParent: Path?, path: Path, zipEntries: Concurre
     // skip the central directory writing by _not_ closing the zip stream
     ZipOutputStream(out).let {
         it.putNextEntry(zipEntry)
-        path.inputStream().use { s -> s.copyTo(it) }
+        path.inputStream().buffered().use { s -> s.copyTo(it) }
         it.closeEntry()
     }
     zipEntries[zipEntry] = out.toByteArray()
@@ -81,8 +79,8 @@ private fun writeZipEntriesToZip(zipFile: Path, list: List<Pair<ZipEntry, ByteAr
 }
 
 // a bit of JVM reflection to work around the missing JDK APIs
-val lookup = MethodHandles.privateLookupIn(ZipOutputStream::class.java, MethodHandles.lookup())
-val varEntries = lookup.findVarHandle(ZipOutputStream::class.java, "xentries", Vector::class.java)
-val varWritten = lookup.findVarHandle(ZipOutputStream::class.java, "written", Long::class.java)
-val xEntryConstructor = Class.forName("java.util.zip.ZipOutputStream\$XEntry").constructors[0]
+private val lookup = MethodHandles.privateLookupIn(ZipOutputStream::class.java, MethodHandles.lookup())
+private val varEntries = lookup.findVarHandle(ZipOutputStream::class.java, "xentries", Vector::class.java)
+private val varWritten = lookup.findVarHandle(ZipOutputStream::class.java, "written", Long::class.java)
+private val xEntryConstructor = Class.forName("java.util.zip.ZipOutputStream\$XEntry").constructors[0]
     .apply { isAccessible = true }
