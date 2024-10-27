@@ -10,10 +10,7 @@ import java.lang.reflect.Constructor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Vector;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
 import java.util.zip.ZipEntry;
@@ -38,7 +35,16 @@ public class MainJava {
         var rootParent = root.getParent();
         try (var pathStream = Files.walk(root)) {
           pathStream.filter(o -> !Files.isDirectory(o)).forEach(
-            path -> pool.execute(() -> addZipEntryToMap(path, rootParent, zipEntries)));
+            path -> pool.execute(() -> {
+              if (path.getFileName().toString().endsWith(".zip")) {
+                addZipFileEntriesToMap(path, zipEntries);
+              }
+              else {
+                addZipEntryToMap(
+                  rootParent == null ? path : rootParent.relativize(path),
+                  path, zipEntries);
+              }
+            }));
         }
         catch (IOException e) {
           throw new RuntimeException(e);
@@ -48,14 +54,13 @@ public class MainJava {
     }
 
     System.out.println(zipEntries.size() + " entries loaded and compressed");
-    // combine all the entries into a single zip
-    // sort if needed
-    writeZipEntriesToZip(zipFile, zipEntries.entrySet().stream().toList());
+    // combine all the entries into a single zip, sorted by name
+    writeZipEntriesToZip(zipFile, zipEntries.entrySet().stream()
+      .sorted(Comparator.comparing(o -> o.getKey().getName())).toList());
     System.out.println(zipFile + " created in " + (System.nanoTime() - startTime) / 1e9 + " sec");
   }
 
-  private static void addZipEntryToMap(Path path, Path rootParent, ConcurrentHashMap<ZipEntry, byte[]> zipEntries) {
-    var relativePath = rootParent == null ? path : rootParent.relativize(path);
+  private static void addZipEntryToMap(Path relativePath, Path path, ConcurrentHashMap<ZipEntry, byte[]> zipEntries) {
     var out = new ByteArrayOutputStream();
     var zipEntry = new ZipEntry(relativePath.toString());
     // skip the central directory writing by _not_ closing the zip stream
@@ -69,6 +74,19 @@ public class MainJava {
       throw new RuntimeException(e);
     }
     zipEntries.put(zipEntry, out.toByteArray());
+  }
+
+  private static void addZipFileEntriesToMap(Path path, ConcurrentHashMap<ZipEntry, byte[]> zipEntries) {
+    try (var zip = new ZipInputStreamEx(new BufferedInputStream(Files.newInputStream(path)))) {
+      while (true) {
+        var zipEntry = zip.getNextEntry();
+        if (zipEntry == null) break;
+        zipEntries.put(zipEntry, zip.readCompressedBytes());
+      }
+    }
+    catch (IOException e) {
+      throw new RuntimeException(e);
+    }
   }
 
   /** @noinspection unchecked*/
@@ -101,7 +119,8 @@ public class MainJava {
       lookup = MethodHandles.privateLookupIn(ZipOutputStream.class, MethodHandles.lookup());
       varEntries = lookup.findVarHandle(ZipOutputStream.class, "xentries", Vector.class);
       varWritten = lookup.findVarHandle(ZipOutputStream.class, "written", long.class);
-      xEntryConstructor = Class.forName("java.util.zip.ZipOutputStream$XEntry").getConstructors()[0];
+      xEntryConstructor = Class.forName("java.util.zip.ZipOutputStream$XEntry")
+        .getDeclaredConstructor(ZipEntry.class, long.class);
       xEntryConstructor.setAccessible(true);
     }
     catch (Exception e) {

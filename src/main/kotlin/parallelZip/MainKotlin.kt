@@ -16,6 +16,7 @@ import kotlin.io.path.Path
 import kotlin.io.path.absolute
 import kotlin.io.path.inputStream
 import kotlin.io.path.isDirectory
+import kotlin.io.path.name
 import kotlin.io.path.outputStream
 import kotlin.io.path.relativeTo
 import kotlin.system.exitProcess
@@ -35,20 +36,24 @@ fun main(args: Array<String>) {
         toZip.forEach { root ->
             Files.walk(root).filter { !it.isDirectory() }.forEach { path ->
                 launch {
-                    addZipEntryToMap(root.parent, path, zipEntries)
+                    val relativePath = (if (root.parent == null) path else path.relativeTo(root.parent))
+                    if (path.name.endsWith(".zip")) {
+                        addZipFileEntriesToMap(path, zipEntries)
+                    }
+                    else {
+                        addZipEntryToMap(relativePath, path, zipEntries)
+                    }
                 }
             }
         }
     }
     println("${zipEntries.size} entries loaded and compressed")
-    // combine all the entries into a single zip
-    // sort if needed
-    writeZipEntriesToZip(zipFile, zipEntries.toList())
+    // combine all the entries into a single zip, sorted by name
+    writeZipEntriesToZip(zipFile, zipEntries.entries.sortedBy { it.key.name }.toList())
     println("$zipFile created in ${(System.nanoTime() - startTime) / 1e9} sec")
 }
 
-private fun addZipEntryToMap(rootParent: Path?, path: Path, zipEntries: ConcurrentHashMap<ZipEntry, ByteArray>) {
-    val relativePath = (if (rootParent == null) path else path.relativeTo(rootParent))
+private fun addZipEntryToMap(relativePath: Path, path: Path, zipEntries: ConcurrentHashMap<ZipEntry, ByteArray>) {
     val out = ByteArrayOutputStream()
     val zipEntry = ZipEntry(relativePath.toString())
     // skip the central directory writing by _not_ closing the zip stream
@@ -60,8 +65,16 @@ private fun addZipEntryToMap(rootParent: Path?, path: Path, zipEntries: Concurre
     zipEntries[zipEntry] = out.toByteArray()
 }
 
+private fun addZipFileEntriesToMap(path: Path, zipEntries: ConcurrentHashMap<ZipEntry, ByteArray>) {
+    val zip = ZipInputStreamEx(path.inputStream().buffered())
+    while (true) {
+        val zipEntry = zip.getNextEntry() ?: break
+        zipEntries[zipEntry] = zip.readCompressedBytes()
+    }
+}
+
 @Suppress("UNCHECKED_CAST")
-private fun writeZipEntriesToZip(zipFile: Path, list: List<Pair<ZipEntry, ByteArray>>) {
+private fun writeZipEntriesToZip(zipFile: Path, list: List<Map.Entry<ZipEntry, ByteArray>>) {
     // a zip is just its entries and a central directory at the end
     zipFile.outputStream().buffered().use { os ->
         val zip = ZipOutputStream(os)
@@ -82,5 +95,5 @@ private fun writeZipEntriesToZip(zipFile: Path, list: List<Pair<ZipEntry, ByteAr
 private val lookup = MethodHandles.privateLookupIn(ZipOutputStream::class.java, MethodHandles.lookup())
 private val varEntries = lookup.findVarHandle(ZipOutputStream::class.java, "xentries", Vector::class.java)
 private val varWritten = lookup.findVarHandle(ZipOutputStream::class.java, "written", Long::class.java)
-private val xEntryConstructor = Class.forName("java.util.zip.ZipOutputStream\$XEntry").constructors[0]
-    .apply { isAccessible = true }
+private val xEntryConstructor = Class.forName("java.util.zip.ZipOutputStream\$XEntry")
+    .getDeclaredConstructor(ZipEntry::class.java, Long::class.java).apply { isAccessible = true }

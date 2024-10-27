@@ -8,7 +8,8 @@ We cannot write to a zip file in parallel, but we can compress data in parallel 
 
 Last but not least, nobody wants to reimplement zip logic from scratch
 or use an unsupported third-party zip library.
-We reuse the standard `java.util.zip.ZipOutputStream` in the presented approach.
+We reuse standard `java.util.zip.ZipOutputStream` and 
+`java.util.zip.ZipInputStream` in the presented approach.
 
 # Algorithm
 
@@ -66,7 +67,7 @@ We reuse the standard `java.util.zip.ZipOutputStream` in the presented approach.
    We can generate already compressed data in parallel in various data generation tasks. 
    Then, saving it to disk will take very little time
 
-4. We can merge zip files without repacking using the same technique
+4. We **merge zip files** without repacking using [the same technique](src/main/kotlin/parallelZip/ZipInputStreamEx.kt)
 
 # Results
 
@@ -82,17 +83,17 @@ Zipping `12.06 GB of 175,866 items` to a `1.14 GB` zip file on a MacBook M2 Max 
 A fully functional parallel zip in pure Java [(source)](src/main/java/parallelZip/MainJava.java):
 
 ```shell
-gradle runJava <out.zip> <file-or-dir> .. 
+./gradlew runJava --args="<out.zip> <file-or-dir> .." 
 ```
 
 A fully functional parallel zip in Kotlin [(source)](src/main/kotlin/parallelZip/MainKotlin.kt):
 
 ```shell
-gradle runKotlin <out.zip> <file-or-dir> ..
+./gradlew runKotlin --args="<out.zip> <file-or-dir> .."
 ```
 
 Sequential zipping for comparison in pure Java [(source)](src/main/java/parallelZip/Sequential.java):
 
 ```shell
-gradle runSequential <out.zip> <file-or-dir> ..
+./gradlew runSequential --args="<out.zip> <file-or-dir> .."
 ```
