@@ -97,3 +97,25 @@ Sequential zipping for comparison in pure Java [(source)](src/main/java/parallel
 ```shell
 ./gradlew runSequential --args="<out.zip> <file-or-dir> .."
 ```
+
+# FatJar and Native Image
+
+| Distributions        | Type                   | Size  |
+|----------------------|------------------------|-------|
+| fatJar               | Jar file with all deps | 3 MB  |
+| GraalVM Native Image | Native executable      | 10 MB |
+
+
+```shell
+# build the fatJar
+./gradlew fatJar
+
+# run the fatJar via java -jar
+java -jar build/libs/parallel-zip.jar <out.zip> <file-or-dir> ..
+
+# build the GraalVM Native Image executable from the fatJar
+<GRAALVM_HOME>/bin/native-image -jar ./build/libs/parallel-zip.jar
+
+# run the GraalVM Native Image executable
+./parallel-zip <out.zip> <file-or-dir> ..
+```

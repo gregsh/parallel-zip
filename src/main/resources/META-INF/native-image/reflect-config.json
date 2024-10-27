@@ -1,0 +1,25 @@
+[
+  {
+    "name": "java.util.zip.ZipOutputStream",
+    "fields": [
+      {
+        "name": "xentries"
+      },
+      {
+        "name": "written"
+      }
+    ]
+  },
+  {
+    "name": "java.util.zip.ZipOutputStream$XEntry",
+    "allDeclaredClasses": true
+  },
+  {
+    "name": "java.io.FilterInputStream",
+    "fields": [
+      {
+        "name": "in"
+      }
+    ]
+  }
+]
