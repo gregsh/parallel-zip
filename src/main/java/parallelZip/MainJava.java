@@ -64,11 +64,12 @@ public class MainJava {
     var out = new ByteArrayOutputStream();
     var zipEntry = new ZipEntry(relativePath.toString());
     // skip the central directory writing by _not_ closing the zip stream
-    var zip = new ZipOutputStream(out);
-    try (var fileStream = new BufferedInputStream(Files.newInputStream(path))) {
-      zip.putNextEntry(zipEntry);
-      fileStream.transferTo(zip);
-      zip.closeEntry();
+    try (var zip = new SingleEntryZipOutputStream(out)) {
+      try (var fileStream = new BufferedInputStream(Files.newInputStream(path))) {
+        zip.putNextEntry(zipEntry);
+        fileStream.transferTo(zip);
+        zip.closeEntry();
+      }
     }
     catch (IOException e) {
       throw new RuntimeException(e);
@@ -93,19 +94,19 @@ public class MainJava {
   private static void writeZipEntriesToZip(Path zipFile, List<Map.Entry<ZipEntry, byte[]>> list) throws Exception {
     // a zip is just its entries and a central directory at the end
     try (var os = new BufferedOutputStream(Files.newOutputStream(zipFile))) {
-      var zip = new ZipOutputStream(os);
-      var xEntries = (Vector<Object>)varEntries.get(zip);
-      var offset = 0L;
-      for (var item : list) {
-        var zipEntry = item.getKey();
-        var bytes = item.getValue();
-        xEntries.add(xEntryConstructor.newInstance(zipEntry, offset));
-        os.write(bytes);
-        offset += bytes.length;
+      try (var zip = new ZipOutputStream(os)) {
+        var xEntries = (Vector<Object>)varEntries.get(zip);
+        var offset = 0L;
+        for (var item : list) {
+          var zipEntry = item.getKey();
+          var bytes = item.getValue();
+          xEntries.add(xEntryConstructor.newInstance(zipEntry, offset));
+          os.write(bytes);
+          offset += bytes.length;
+        }
+        varWritten.set(zip, offset);
+        // write the central directory on close
       }
-      // write the central directory
-      varWritten.set(zip, offset);
-      zip.close();
     }
   }
 

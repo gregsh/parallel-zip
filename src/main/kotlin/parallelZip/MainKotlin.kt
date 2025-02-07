@@ -57,7 +57,7 @@ private fun addZipEntryToMap(relativePath: Path, path: Path, zipEntries: Concurr
     val out = ByteArrayOutputStream()
     val zipEntry = ZipEntry(relativePath.toString())
     // skip the central directory writing by _not_ closing the zip stream
-    ZipOutputStream(out).let {
+    SingleEntryZipOutputStream(out).use {
         it.putNextEntry(zipEntry)
         path.inputStream().buffered().use { s -> s.copyTo(it) }
         it.closeEntry()
@@ -77,17 +77,17 @@ private fun addZipFileEntriesToMap(path: Path, zipEntries: ConcurrentHashMap<Zip
 private fun writeZipEntriesToZip(zipFile: Path, list: List<Map.Entry<ZipEntry, ByteArray>>) {
     // a zip is just its entries and a central directory at the end
     zipFile.outputStream().buffered().use { os ->
-        val zip = ZipOutputStream(os)
-        val xEntries = varEntries.get(zip) as Vector<Any>
-        var offset = 0L
-        list.forEach { (zipEntry, bytes) ->
-            xEntries.add(xEntryConstructor.newInstance(zipEntry, offset))
-            os.write(bytes)
-            offset += bytes.size.toLong()
+        ZipOutputStream(os).use { zip ->
+            val xEntries = varEntries.get(zip) as Vector<Any>
+            var offset = 0L
+            list.forEach { (zipEntry, bytes) ->
+                xEntries.add(xEntryConstructor.newInstance(zipEntry, offset))
+                os.write(bytes)
+                offset += bytes.size.toLong()
+            }
+            varWritten.set(zip, offset)
+            // write the central directory on close
         }
-        // write the central directory
-        varWritten.set(zip, offset)
-        zip.close()
     }
 }
 

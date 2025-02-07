@@ -16,7 +16,7 @@ We reuse standard `java.util.zip.ZipOutputStream` and
 1. Collect all zip entries and their bytes for each input file in parallel.
    For each input file:
    - Get a `ByteArrayOutputStream` and a `ZipOutputStream` on top of it
-   - Write an entry to a zip stream. Do not close it to avoid writing an unneeded central directory
+   - Write an entry to the zip stream skipping the central directory using `SingleEntryZipOutputStream`.
    - Get the bytes from the byte stream
 
 ```java
@@ -25,33 +25,35 @@ We reuse standard `java.util.zip.ZipOutputStream` and
       // for each input file in parallel:
       var out = new ByteArrayOutputStream();
       var zipEntry = new ZipEntry(filePathRelativeToZipRoot);
-      var zip = new ZipOutputStream(out);
-      try (var fileStream = Files.newInputStream(filePath)) {
-        zip.putNextEntry(zipEntry);
-        fileStream.transferTo(zip);
-        zip.closeEntry();
+      try (var zip = new SingleEntryZipOutputStream(out)) {
+        try (var fileStream = Files.newInputStream(filePath)) {
+          zip.putNextEntry(zipEntry);
+          fileStream.transferTo(zip);
+          zip.closeEntry();
+        }
       }
       zipEntries.put(zipEntry, out.toByteArray());
 ```
 
 2. Write all entries and bytes sequentially to a target zip file:
    - Get a `FileOutputStream` and a `ZipOutputStream` on top of it
-   - Write bytes of all entries to a file stream updating zip stream state
-   - Write the central directory by closing the zip stream
+   - Write bytes of all entries to the file stream updating the zip stream state
+   - Write the central directory by closing the zip stream as usual
 
 ```java
     try (var os = Files.newOutputStream(zipFile)) {
-      var zip = new ZipOutputStream(os);
-      var offset = 0L;
-      for (Map.Entry<ZipEntry, byte[]> o : zipEntries.entrySet()) {
-        var zipEntry = o.getKey();
-        var bytes = o.getValue();
-        zip.xEntries.add(new XEntry(zipEntry, offset)); // via reflection
-        os.write(bytes);
-        offset += bytes.length;
+      try (var zip = new ZipOutputStream(os)) {
+         var offset = 0L;
+         for (Map.Entry<ZipEntry, byte[]> o : zipEntries.entrySet()) {
+           var zipEntry = o.getKey();
+           var bytes = o.getValue();
+           zip.xEntries.add(new XEntry(zipEntry, offset)); // via reflection
+           os.write(bytes);
+           offset += bytes.length;
+         }
+         zip.offset = offset; // via reflection
+         // write the central directory on close
       }
-      zip.offset = offset; // via reflection
-      zip.close();
     }
 ```
 
